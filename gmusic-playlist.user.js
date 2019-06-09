@@ -10,7 +10,7 @@
 // @grant        none
 // ==/UserScript==
 /* jshint -W097 */
-/* globals console,Promise */
+/* globals console, Promise */
 'use strict';
 
 var debug = function () { console.log(arguments); };
@@ -95,7 +95,7 @@ class Converter {
         this.tprefix = '_';
         var my = this;
         if (other) {
-            Object.keys(other).forEach(function (key) {
+            Object.keys(other).forEach((key) => {
                 my[key] = other[key];
             });
         }
@@ -128,7 +128,7 @@ class Converter {
         var val = '';
         var ignoreSep = false;
         var conv = this;
-        [].slice.call(csv).forEach(function (char) {
+        [].slice.call(csv).forEach((char) => {
             if (char === conv.csvchar && !ignoreSep) {
                 arr.push(conv.unquoteCsv(val));
                 val = '';
@@ -145,7 +145,7 @@ class Converter {
     arrayToCsv(arr) {
         var csv = '';
         var conv = this;
-        arr.forEach(function (val) {
+        arr.forEach((val) => {
             csv += conv.quoteCsv(String(val)) + ',';
         });
         return csv.substring(0, csv.length - 1);
@@ -154,7 +154,7 @@ class Converter {
     struct(obj) {
         var struct = [];
         var conv = this;
-        Object.keys(obj).forEach(function (key) {
+        Object.keys(obj).forEach((key) => {
             if (STRU.startswith(key, conv.tprefix)) return;
             struct.push(key);
         });
@@ -165,7 +165,7 @@ class Converter {
         var arr = [];
         var conv = this;
         structure = structure || conv.struct(obj);
-        structure.forEach(function (key) {
+        structure.forEach((key) => {
             arr.push(obj[key]);
         });
         return arr;
@@ -176,7 +176,7 @@ class Converter {
         structure = structure || conv.struct(obj);
         obj = !obj ? {} : obj;
         conv = this;
-        structure.forEach(function (key, idx) {
+        structure.forEach((key, idx) => {
             if (!key) return;
             obj[key] = arr[idx];
         });
@@ -185,7 +185,7 @@ class Converter {
 
     update(orig, update) {
         var keys = Object.keys(orig);
-        keys.forEach(function (key) {
+        keys.forEach((key) => {
             if (!orig[key] && update[key]) {
                 orig[key] = update[key];
             }
@@ -205,16 +205,16 @@ class Exporter {
     }
 
     listenTo(ahref) {
-        var exporter = this;
-        ahref.addEventListener('click', function (e) { exporter.export.call(exporter, e); }, false);
+        ahref.addEventListener('click', () => { this.export(); }, false);
     }
+
     /* return a csv string for the given songlists */
     generateCsv(songlists) {
         var csv = '';
         var conv = new Converter();
         csv += conv.arrayToCsv(conv.struct(new Song())) + conv.csvchar + 'playlist\n';
-        songlists.forEach(function (songlist) {
-            songlist.songs.forEach(function (song) {
+        songlists.forEach((songlist) => {
+            songlist.songs.forEach((song) => {
                 csv += conv.arrayToCsv(conv.objectToArray(song)) +
                     conv.csvchar + conv.quoteCsv(songlist.name) + '\n';
             });
@@ -222,6 +222,7 @@ class Exporter {
         stat.update('generated csv for ' + songlists.length + ' playlists');
         return csv;
     }
+
     /* trigger a download file for the given csv text */
     downloadCsv(csv, filename) {
         /* use blob to overcome href data limits */
@@ -235,23 +236,24 @@ class Exporter {
     }
 
     export() {
-        var exporter = this;
+        var ex = this;
         var music = new GMusic(session);
-        var populateSonglists = function (songlists) {
+
+        var populateSonglists = (songlists) => {
             var lists = [];
             var populated = [];
-            var addpop = function (full) {
+            var addpop = (full) => {
                 populated.push(full);
             };
-            songlists.forEach(function (songlist) {
+            songlists.forEach((songlist) => {
                 lists.push(music.getPlaylistSongs(songlist).then(addpop));
             });
             lists.push(music.getThumbsUp().then(addpop));
             lists.push(music.getLibrary().then(addpop));
             stat.update('queued up ' + lists.length + ' playlists for download');
-            return Promise.all(lists).then(function () {
+            return Promise.all(lists).then(() => {
                 var totalSongs = 0;
-                populated.forEach(function (plist) {
+                populated.forEach((plist) => {
                     totalSongs += plist.songs.length;
                 });
                 stat.progress = totalSongs + ' songs. ';
@@ -259,8 +261,9 @@ class Exporter {
                 return populated;
             });
         };
-        music.getPlaylists().then(populateSonglists).then(function (songlists) {
-            exporter.downloadCsv(exporter.generateCsv(songlists), 'playlists_export.csv');
+
+        music.getPlaylists().then(populateSonglists).then((songlists) => {
+            ex.downloadCsv(ex.generateCsv(songlists), 'playlists_export.csv');
         });
     }
 }
@@ -276,15 +279,15 @@ class Importer {
 
     listenTo(value) {
         var file = this;
-        value.addEventListener('change', function (e) { file.read.call(file, e); }, false);
+        value.addEventListener('change', (e) => { file.read.call(file, e); }, false);
     }
 
     readFile(file) {
         stat.update('preparing to read file');
-        return new Promise(function (resolve, reject) {
+        return new Promise((resolve, reject) => {
             var reader = new FileReader();
-            var onload = function (event) { resolve(event.target.result); };
-            var onerror = function () { reject(Error('file error')); };
+            var onload = (event) => { resolve(event.target.result); };
+            var onerror = () => { reject(Error('file error')); };
             reader.addEventListener('load', onload, false);
             reader.addEventListener('error', onerror, false);
             reader.readAsText(file);
@@ -333,7 +336,7 @@ class Importer {
             var pstruct = conv.struct(new Song());
             pstruct.push('playlist');
             pstruct = getStructures(pstruct).playlist;
-            lines.forEach(function (line, i) {
+            lines.forEach((line, i) => {
                 line = line.replace(/\r/g, '');
                 if (line === '') return;
                 var arr = conv.csvToArray(line);
@@ -357,7 +360,7 @@ class Importer {
             });
             var songlists = [];
             var songlistnames = Object.keys(songlistmap);
-            songlistnames.forEach(function (name) {
+            songlistnames.forEach((name) => {
                 songlists.push(songlistmap[name]);
             });
             stat.update('parsed ' + songlists.length + ' playlists');
@@ -365,27 +368,27 @@ class Importer {
         };
 
         /* search for gmusic song ids for the songs in each song list */
-        var getGMusicSongIds = function (songlists) {
+        var getGMusicSongIds = (songlists) => {
             var songcount = 0;
             var allsongs = [];
-            var progress = function () { return songcount + '/' + allsongs.length + ' songs. '; };
-            songlists.forEach(function (songlist) {
+            var progress = () => { return songcount + '/' + allsongs.length + ' songs. '; };
+            songlists.forEach((songlist) => {
                 allsongs = allsongs.concat(songlist.songs);
             });
             stat.progress = progress();
             stat.update('searching...');
-            var searchCompleted = function () {
+            var searchCompleted = () => {
                 stat.update('song search complete for ' +
                     songlists.length + ' playlists');
                 return songlists;
             };
-            var searchFailed = function (err) {
+            var searchFailed = (err) => {
                 stat.update('search error');
                 console.log(err);
             };
             var looper = new ALooper(allsongs);
-            return looper.forEach(function (song) {
-                return song.getGMusicId().then(function () {
+            return looper.forEach((song) => {
+                return song.getGMusicId().then(() => {
                     if (song.id) {
                         ++songcount;
                         stat.update('found: ' + song.title + ' by ' + song.artist);
@@ -395,17 +398,17 @@ class Importer {
             }).then(searchCompleted, searchFailed);
         };
         /* create playlists for the songlists */
-        var createGMusicPlaylists = function (songlists) {
+        var createGMusicPlaylists = (songlists) => {
             var createTasks = [];
             var createdlists = [];
-            songlists.forEach(function (songlist) {
+            songlists.forEach((songlist) => {
                 createTasks.push(songlist.toGMusic().then(
-                    function (gmusiclists) {
+                    (gmusiclists) => {
                         createdlists = createdlists.concat(gmusiclists);
                     }));
             });
             stat.update('creating ' + createTasks.length + ' playlists');
-            return Promise.all(createTasks).then(function () {
+            return Promise.all(createTasks).then(() => {
                 stat.update('created ' + createdlists.length + ' playlists');
                 return createdlists;
             });
@@ -413,7 +416,7 @@ class Importer {
         /* convert the songlists back to csv and provide for download */
         var exporter = new Exporter();
         this.readFile(file).then(parseCsv).then(getGMusicSongIds)
-            .then(createGMusicPlaylists).then(function (gmusiclists) {
+            .then(createGMusicPlaylists).then((gmusiclists) => {
                 exporter.downloadCsv(exporter.generateCsv(gmusiclists), 'playlists_import.csv');
             });
     }
@@ -474,15 +477,15 @@ class ALooper {
         this.arr = arr;
         this.chunk = 50;
         this.pause = 1;
-        this.pausefunc = function () { };
+        this.pausefunc = () => { };
     }
 
     forEach(loopCallBack) {
         var looper = this;
-        return new Promise(function (resolve) {
+        return new Promise((resolve) => {
             var i = 0;
             var promises = [];
-            var iterator = function () {
+            var iterator = () => {
                 if (i >= looper.arr.length) {
                     Promise.all(promises).then(resolve);
                     return;
@@ -490,7 +493,7 @@ class ALooper {
                 var arrval = looper.arr[i++];
                 var callbackpromise = loopCallBack(arrval, i, looper.arr);
                 promises.push(callbackpromise);
-                var pauseAndContinue = function () {
+                var pauseAndContinue = () => {
                     promises = [];
                     looper.pausefunc();
                     setTimeout(iterator, looper.pause);
@@ -519,17 +522,17 @@ class Filter {
     _apply(propName, propValue, exact) {
         var filter = this;
         if (!propValue) {
-            return new Promise(function (res) { res(filter); });
+            return new Promise((res) => { res(filter); });
         }
         var fsongs = [];
-        return new ALooper(filter.songs).forEach(function (song) {
+        return new ALooper(filter.songs).forEach((song) => {
             var match = (exact) ? song[propName] === propValue : STRU.closeMatch(song[propName], propValue);
             if (match) {
                 var fsong = new Converter({ 'tprefix': null }).clone(song);
                 fsongs.push(fsong);
                 filter.match[propName] = true;
             }
-        }).then(function () {
+        }).then(() => {
             if (fsongs.length > 0) {
                 filter.hasMatch = true;
                 filter.songs = fsongs;
@@ -542,11 +545,11 @@ class Filter {
     removeDuplicates() {
         var filter = this;
         var unique = {};
-        return new ALooper(filter.songs).forEach(function (song) {
+        return new ALooper(filter.songs).forEach((song) => {
             if (!unique[song.id]) unique[song.id] = song;
-        }).then(function () {
+        }).then(() => {
             filter.songs = [];
-            Object.keys(unique).forEach(function (key) {
+            Object.keys(unique).forEach((key) => {
                 filter.songs.push(unique[key]);
             });
             return filter;
@@ -562,7 +565,7 @@ class Filter {
         var keys = Object.keys(song);
         var filter = this;
         /* apply the filters one after another asyncly */
-        return new Promise(function (resolve) {
+        return new Promise((resolve) => {
             var keyidx = 0;
             (function iterator() {
                 if (keyidx >= keys.length) {
@@ -570,7 +573,7 @@ class Filter {
                     resolve(filter); return;
                 }
                 var key = keys[keyidx++];
-                filter._apply(key, song[key], exactMatch).then(function () {
+                filter._apply(key, song[key], exactMatch).then(() => {
                     iterator();
                 });
             })();
@@ -593,7 +596,7 @@ class Songlist {
     indexSongsByArtist() {
         var slist = this;
         slist.songsByArtistMap = {};
-        slist.songs.forEach(function (song) {
+        slist.songs.forEach((song) => {
             var artistKey = slist.getIndexKey(song.artist);
             if (!(artistKey in slist.songsByArtistMap)) {
                 slist.songsByArtistMap[artistKey] = [];
@@ -651,7 +654,7 @@ class Songlist {
         var songlist = this;
         if (songlist.id) {
             trace('has google id', songlist);
-            return new Promise(function (res) { res([songlist]); });
+            return new Promise((res) => { res([songlist]); });
         }
         sess = !sess ? session : sess;
         var music = new GMusic(sess);
@@ -662,7 +665,7 @@ class Songlist {
     /* populate songlist from the typical gmusic response */
     fromGMusic(response) {
         var songlist = this;
-        var addsng = function (sng, top) {
+        var addsng = (sng, top) => {
             if (!sng) return;
             top = top || false;
             var song = new Song().fromGMusic(sng);
@@ -674,14 +677,14 @@ class Songlist {
             var arr = JSON.parse(response);
             /* google song search */
             if (arr[1][16]) {
-                arr[1][16].forEach(function (search_type) {
-                    if (search_type.length > 1) search_type[1].forEach(function (sng) {
+                arr[1][16].forEach((search_type) => {
+                    if (search_type.length > 1) search_type[1].forEach((sng) => {
                         addsng(sng[0]);
                     });
                     /* playlist song results */
                 });
             } else if (arr[1][0]) {
-                arr[1][0].forEach(function (song) {
+                arr[1][0].forEach((song) => {
                     addsng(song);
                 });
             }
@@ -692,7 +695,7 @@ class Songlist {
             });
             if (arr[1][4]) addsng(arr[1][4],true); */
         } else {
-            response.forEach(function (song) {
+            response.forEach((song) => {
                 addsng(song);
             });
         }
@@ -754,24 +757,24 @@ class Song {
     getGMusicId(sess) {
         var song = this;
         if (song.id) {
-            return new Promise(function (res) { res(song.id); });
+            return new Promise((res) => { res(song.id); });
         }
         sess = !sess ? session : sess;
         var music = new GMusic(sess);
         trace('looking for song id for ' + song.title, song);
-        return music.search(song).then(function (filter) {
+        return music.search(song).then((filter) => {
             trace(song.title + ' search complete', [song, filter]);
             if (filter.hasMatch) {
                 song.notes = STRU.pad(filter.songs.length, 2) +
                     ' results match ';
-                Object.keys(filter.match).forEach(function (key) {
+                Object.keys(filter.match).forEach((key) => {
                     song.notes += key + ':';
                 });
                 new Converter().update(song, filter.songs[0]);
             }
             trace(song.title + ' id search complete');
             return song.id;
-        }, function (err) {
+        }, (err) => {
             stat.update('search error');
             console.log(err, song);
         });
@@ -787,15 +790,15 @@ class GMusic {
 
     _req(urlString, data, passthrough) {
         var session = this.session;
-        return new Promise(function (resolve, reject) {
+        return new Promise((resolve, reject) => {
             var request = new XMLHttpRequest();
             request.open('POST', urlString + '?format=jsarray&' + session.getQuery());
-            var onload = function () {
+            var onload = () => {
                 var rval = passthrough ? [request.response, passthrough] : request.response;
                 resolve(rval);
             };
-            var balancedload = function () { setTimeout(onload, 1); };
-            var onerror = function () {
+            var balancedload = () => { setTimeout(onload, 1); };
+            var onerror = () => {
                 reject(Error('network error'));
             };
             request.addEventListener('load', balancedload, false);
@@ -810,7 +813,7 @@ class GMusic {
     searchService(search_string, attempts) {
         attempts = (attempts) ? attempts : 0;
         var gmusic = this;
-        return this._req('services/search', [search_string, 10, [1, 1, 1, 1, 1, 1, 1, 1, 1], 1, null, true]).then(function (resp) {
+        return this._req('services/search', [search_string, 10, [1, 1, 1, 1, 1, 1, 1, 1, 1], 1, null, true]).then((resp) => {
             var resultlist = new Songlist(search_string + ' search results').fromGMusic(resp);
             if (!resultlist.songs.length) {
                 var suggestion = JSON.parse(resp)[1][10];
@@ -831,14 +834,14 @@ class GMusic {
         var processes = [];
         var songs = [];
         var gmusic = this;
-        var search_string = function (song) {
+        var search_string = (song) => {
             var string = !song.artist ? '' : song.artist;
             string += !song.title ? '' : ' ' + song.title;
             return string;
         };
         var bless = new Song();
         var hasBrackets = false;
-        Object.keys(song).forEach(function (key) {
+        Object.keys(song).forEach((key) => {
             if (!song[key]) return;
             var src = String(song[key]);
             bless[key] = src.replace(STRU.brackets, '');
@@ -846,30 +849,30 @@ class GMusic {
                 hasBrackets = true;
             }
         });
-        processes.push(gmusic.getLibrary().then(function (lib) {
+        processes.push(gmusic.getLibrary().then((lib) => {
             songs = songs.concat(lib.songsByArtist(song.artist));
         }));
         processes.push(gmusic.searchService(search_string(song)).then(
-            function (slist) { songs = songs.concat(slist.songs); }));
+            (slist) => { songs = songs.concat(slist.songs); }));
         if (search_string(song).match(STRU.brackets)) {
             debug('performing extra search for bracketless version ' + bless.title, bless);
             processes.push(gmusic.searchService(search_string(bless)).then(
-                function (slist) { songs = songs.concat(slist.songs); }));
+                (slist) => { songs = songs.concat(slist.songs); }));
         }
-        var createFilter = function () {
+        var createFilter = () => {
             return new Filter(songs);
         };
-        var filterResults = function (filter) {
+        var filterResults = (filter) => {
             return filter.bySong(song);
         };
-        var filterBrackets = function (filter) {
+        var filterBrackets = (filter) => {
             if (hasBrackets && !filter.match.title) {
                 filter.bySong(bless);
             }
             return filter;
         };
         /* explicity titled songs sometimes have *'s in them */
-        var filterWildChars = function (filter) {
+        var filterWildChars = (filter) => {
             if (!filter.match.title && song.title.match(STRU.wildWords)) {
                 var tame = new Converter({ 'tprefix': null }).clone(song);
                 tame.title = song.title.replace(STRU.wildWords, '');
@@ -878,11 +881,11 @@ class GMusic {
             return filter;
         };
         /* attempt to get an exact match */
-        var findExactMatch = function (filter) {
+        var findExactMatch = (filter) => {
             if (!filter.match.title) return filter;
             return filter.byExactSong(song);
         };
-        var removeDuplicates = function (filter) {
+        var removeDuplicates = (filter) => {
             if (filter.hasMatch) {
                 filter.removeDuplicates();
             }
@@ -901,7 +904,7 @@ class GMusic {
         var gmusic = this;
         var session = gmusic.session;
         if (session.libraryCache) {
-            return new Promise(function (resolve) {
+            return new Promise((resolve) => {
                 resolve(session.libraryCache);
             });
         }
@@ -909,15 +912,15 @@ class GMusic {
            where the library is split between multiple script
            segments
          */
-        var getSongArray = function (response) {
+        var getSongArray = (response) => {
             var songdoc = new XDoc().fromString(response);
             var songarr = [];
             var scripts = songdoc.search('//script');
             var orig_process = window.parent.slat_process;
-            window.parent.slat_process = function (songdata) {
+            window.parent.slat_process = (songdata) => {
                 songarr = songarr.concat(songdata[0]);
             };
-            scripts.forEach(function (script) {
+            scripts.forEach((script) => {
                 try {
                     eval(script.textContent);
                     // eslint-disable-next-line no-empty
@@ -927,7 +930,7 @@ class GMusic {
             return songarr;
         };
         return this._req('services/streamingloadalltracks', []).then(
-            getSongArray).then(function (songArray) {
+            getSongArray).then((songArray) => {
             session.libraryCache = new Songlist('Library').fromGMusic(songArray);
             return session.libraryCache;
         });
@@ -935,31 +938,33 @@ class GMusic {
 
     /* return a songlist of thumbs up songs */
     getThumbsUp() {
-        return this._req('services/getephemthumbsup', []).then(function (resp) {
+        return this._req('services/getephemthumbsup', []).then((resp) => {
             return new Songlist('Thumbs Up').fromGMusic(resp);
         });
     }
 
     /* return an array of empty songslists */
     getPlaylists() {
-        var genSonglists = function (response) {
+        var genSonglists = (response) => {
             var arr = JSON.parse(response);
             var playlistArr = arr[1][0];
             var songlists = [];
-            playlistArr.forEach(function (playlist) {
+            playlistArr.forEach((playlist) => {
                 songlists.push(new Converter().arrayToObject(
                     playlist, new Songlist(), ['id', 'name']));
             });
             return songlists;
         };
+
         return this._req('services/loadplaylists', []).then(genSonglists);
     }
 
     /* return a populated songlist */
     getPlaylistSongs(songlist) {
-        var genSonglist = function (response) {
+        var genSonglist = (response) => {
             return new Songlist(songlist.name, songlist.id).fromGMusic(response);
         };
+
         return this._req('services/loaduserplaylist', [String(songlist.id)]).then(genSonglist);
     }
 
@@ -967,28 +972,30 @@ class GMusic {
     createPlaylist(songlist) {
         var gmusic = this;
         var lists = songlist.split(1000);
-        var createEmptyPlaylist = function (list) {
+
+        var createEmptyPlaylist = (list) => {
             stat.update('creating empty ' + list.name + ' playlist');
             return gmusic._req('services/createplaylist', [false, list.name, null, []], list);
         };
-        var updateListId = function (respList) {
+
+        var updateListId = (respList) => {
             var list = respList[1];
             var id = JSON.parse(respList[0])[1][0];
             list.id = id;
             stat.update('updated ' + list.name + ' id');
             return list;
         };
-        var updatePlaylist = function (plist) {
+        var updatePlaylist = (plist) => {
             stat.update('updated ' + plist.name + ' songs');
             return gmusic.addToPlaylist(plist);
         };
 
         var tasks = [];
-        lists.forEach(function (list) {
+        lists.forEach((list) => {
             tasks.push(createEmptyPlaylist(list).then(
                 updateListId).then(updatePlaylist));
         });
-        return Promise.all(tasks).then(function () {
+        return Promise.all(tasks).then(() => {
             stat.update('created ' + lists.length + ' playlists');
             return lists;
         });
@@ -997,7 +1004,7 @@ class GMusic {
     addToPlaylist(songlist) {
         var playlist = [songlist.id, []];
         var psongs = playlist[1];
-        songlist.songs.forEach(function (song) {
+        songlist.songs.forEach((song) => {
             if (song.id) {
                 psongs.push([song.id, Number(song.idtype)]);
             }
@@ -1022,8 +1029,8 @@ class SessionInfo {
         /* the obfid, not sure what this is yet. */
         this.obfid = null;
         /* listener for when the session first becomes valid. */
-        this.oninit = function () {
-            new GMusic(this).getLibrary().then(function (songlist) {
+        this.oninit = () => {
+            new GMusic(this).getLibrary().then((songlist) => {
                 console.log('session active. ' + songlist.songs.length + ' songs loaded. ');
             });
         };
@@ -1168,6 +1175,3 @@ var tap = new XHRTap();
 /* pull out session information from the clinet/server comms */
 tap.sendcallback = () => session.fromTap(tap);
 tap.inject();
-
-
-
