@@ -1,20 +1,19 @@
 import GMusic from "./GMusic";
-import { OptionalString, session, stat, STRU, trace } from "./gmusic-playlist.user";
+import { OptionalString, session, status, trace } from "./gmusic-playlist.user";
 import SessionInfo from "./SessionInfo";
 import Song from "./Song";
+import { brackets } from "./StringFunctions";
 
 /* a collection of songs. */
 export default class Songlist {
     name?: string;
-    songs: Song[];
-    id?: number;
+    songs: Song[] = [];
+    id?: string;
     songsByArtistMap: { [x: string]: Song[]; } = {};
 
-    constructor(name?: string, id?: number) {
+    constructor(name?: string, id?: string) {
         /* the name of the song list */
         this.name = name;
-        /* the songs in the song list */
-        this.songs = [];
         /** the google id for this playlist */
         this.id = id;
     }
@@ -37,7 +36,7 @@ export default class Songlist {
         var key = value.toLowerCase();
         key = key.replace(/ and.*| &.*/, '');
         key = key.replace('the ', '');
-        key = key.replace(STRU.brackets, '');
+        key = key.replace(brackets, '');
         key = key.replace(/[\W_]+/, '');
         return key;
     }
@@ -71,7 +70,7 @@ export default class Songlist {
             splitSonglists = [this];
         }
 
-        stat.update('split songlist');
+        status.update('split songlist');
 
         return splitSonglists;
     }
@@ -84,7 +83,7 @@ export default class Songlist {
         }
         sess = !sess ? session : sess;
         var music = new GMusic(sess);
-        stat.update('creating playlist');
+        status.update('creating playlist');
         return music.createPlaylist(this);
     }
 
@@ -93,7 +92,7 @@ export default class Songlist {
         var addsng = (sng: any, top: boolean = false) => {
             if (!sng) return;
 
-            var song = new Song().fromGMusic(sng);
+            var song = Song.fromGMusic(sng);
 
             if (!song.id) return;
             song._gsuggested = top;

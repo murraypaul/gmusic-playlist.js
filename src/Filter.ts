@@ -1,28 +1,37 @@
 import Song from "./Song";
-import { STRU, trace } from "./gmusic-playlist.user";
+import { trace } from "./gmusic-playlist.user";
 import Converter from "./Converter";
+import ALooper from "./ALooper";
+import { closeMatch } from "./StringFunctions";
+import Songlist from "./Songlist";
 
 /* a filtered list of songs*/
 export default class Filter {
     songs: Song[];
     hasMatch: boolean = false;
-    match: any = {};
+    match: {[key: string]: boolean} = {};
+
     constructor(initialList: Song[]) {
         this.songs = initialList;
     }
-    _apply(propName: keyof Song, propValue: any, exact: boolean) {
-        if (!propValue) {
-            return new Promise((res) => { res(this); });
-        }
+
+    private apply(propName: keyof Song, propValue: any, exact: boolean) {
+        // if (!propValue) {
+        //     return new Promise((res) => { res(this); });
+        // }
+
         var fsongs: Song[] = [];
         const looper = new ALooper(this.songs);
+
         return looper.forEach((song) => {
-            var match = (exact) ? song[propName] === propValue : STRU.closeMatch(song[propName], propValue);
-            if (match) {
-                var fsong = new Converter(null).clone(song);
-                fsongs.push(fsong);
-                this.match[propName] = true;
-            }
+            return new Promise<void>(() => {
+                var match = (exact) ? song[propName] === propValue : closeMatch(song[propName], propValue);
+                if (match) {
+                    var fsong = Converter.clone(song);
+                    fsongs.push(fsong);
+                    this.match[propName] = true;
+                }
+            });
         }).then(() => {
             if (fsongs.length > 0) {
                 this.hasMatch = true;
@@ -32,40 +41,52 @@ export default class Filter {
             return this;
         });
     }
+
     removeDuplicates() {
-        var unique: any = {};
-        return new ALooper(this.songs).forEach((song) => {
-            if (!unique[song.id])
-                unique[song.id] = song;
-        }).then(() => {
-            this.songs = [];
-            for (let key in unique) {
-                this.songs.push(unique[key]);
+        var unique: {[key: string]: Song} = {};
+        var newArray: Song[] = new Array<Song>();
+        
+        for (let idx = 0; idx < this.songs.length; idx++) {
+            var song = this.songs[idx];
+
+            if (!unique[song.id!]) {
+                unique[song.id!] = song;
+                newArray.push(song);
             }
-            return this;
-        });
+        }
+
+        this.songs = newArray;
     }
-    byExactSong(song) {
+
+    byExactSong(song: Song) {
         return this.bySong(song, true);
     }
-    bySong(song: Song, exactMatch?: boolean) {
-        exactMatch = exactMatch || false;
-        var keys = Object.keys(song);
-        var filter = this;
+
+    bySong(song: Song, exactMatch: boolean = false): Promise<Filter> {
+        var keys: (keyof Song)[] = new Array<keyof Song>();
+        for (let key in Song) {
+            keys.push(key as keyof Song);
+        }
+
         /* apply the filters one after another asyncly */
-        return new Promise((resolve) => {
+        return new Promise<Filter>((resolve) => {
             var keyidx = 0;
-            (function iterator() {
+
+            var iterator = () => {
                 if (keyidx >= keys.length) {
-                    trace('filter complete for ' + song.title, filter);
-                    resolve(filter);
+                    trace('filter complete for ' + song.title, this);
+                    resolve(this);
                     return;
                 }
+
                 var key = keys[keyidx++];
-                filter._apply(key, song[key], exactMatch).then(() => {
+
+                this.apply(key, song[key], exactMatch).then(() => {
                     iterator();
                 });
-            })();
+            };
+            
+            iterator();
         });
     }
 }

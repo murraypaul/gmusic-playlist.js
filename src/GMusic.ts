@@ -1,10 +1,11 @@
 import Song from "./Song";
 import Filter from "./Filter";
 import Songlist from "./Songlist";
-import { debug, STRU, stat } from "./gmusic-playlist.user";
+import { debug, status } from "./gmusic-playlist.user";
 import SessionInfo from "./SessionInfo";
 import XDoc from "./XDoc";
 import Converter from "./Converter";
+import { brackets, wildWords } from "./StringFunctions";
 
 /* send commands to google music server */
 export default class GMusic {
@@ -42,27 +43,21 @@ export default class GMusic {
     }
 
     /* return a songlist of songs from the service based on search_string */
-    searchService(search_string: string, attempts: number = 0): Promise<Songlist> {
+    async searchService(search_string: string, attempts: number = 0): Promise<Songlist> {
         var gmusic = this;
 
-        return this._req<Songlist>(
-            'services/search', 
-            [search_string, 10, [1, 1, 1, 1, 1, 1, 1, 1, 1], 1, null, true]
-        ).then((resp: any) => {
-            var resultlist = new Songlist(search_string + ' search results').fromGMusic(resp);
-
-            if (!resultlist.songs.length) {
-                var suggestion = JSON.parse(resp)[1][10];
-                if (suggestion && attempts < 3) {
-                    debug('retrying search using suggestion ' + suggestion, [resp]);
-                    attempts = attempts + 1;
-                    return gmusic.searchService(suggestion, attempts);
-                }
+        const resp = await this._req<string>('services/search', [search_string, 10, [1, 1, 1, 1, 1, 1, 1, 1, 1], 1, null, true]);
+        var resultlist = new Songlist(search_string + ' search results').fromGMusic(resp);
+        if (!resultlist.songs.length) {
+            var suggestion = JSON.parse(resp)[1][10];
+            if (suggestion && attempts < 3) {
+                debug('retrying search using suggestion ' + suggestion, [resp]);
+                attempts = attempts + 1;
+                return gmusic.searchService(suggestion, attempts);
             }
-
-            debug('recieved search response for ' + search_string, [resp, resultlist]);
-            return resultlist;
-        });
+        }
+        debug('recieved search response for ' + search_string, [resp, resultlist]);
+        return resultlist;
     }
     
     /* return a filtered list of songs based on the given song */
@@ -85,7 +80,7 @@ export default class GMusic {
             if (!(song as any)[key])
                 return;
             var src = String((song as any)[key]);
-            (bless as any)[key] = src.replace(STRU.brackets, '');
+            (bless as any)[key] = src.replace(brackets, '');
             if ((bless as any)[key] !== src) {
                 hasBrackets = true;
             }
@@ -97,7 +92,7 @@ export default class GMusic {
 
         processes.push(gmusic.searchService(search_string(song)).then(function (slist) { songs = songs.concat(slist.songs); }));
 
-        if (search_string(song).match(STRU.brackets)) {
+        if (search_string(song).match(brackets)) {
             debug('performing extra search for bracketless version ' + bless.title, bless);
             processes.push(gmusic.searchService(search_string(bless)).then(function (slist) { songs = songs.concat(slist.songs); }));
         }
@@ -120,9 +115,9 @@ export default class GMusic {
 
         /* explicity titled songs sometimes have *'s in them */
         var filterWildChars = (filter: Filter) => {
-            if (!filter.match.title && song.title!.match(STRU.wildWords)) {
-                var tame = new Converter(null).clone(song);
-                tame.title = song.title!.replace(STRU.wildWords, '');
+            if (!filter.match.title && song.title!.match(wildWords)) {
+                var tame = Converter.clone(song);
+                tame.title = song.title!.replace(wildWords, '');
                 filter.bySong(tame);
             }
 
@@ -143,10 +138,11 @@ export default class GMusic {
             return filter;
         };
 
-        return Promise.all(processes).then(createFilter).then(filterResults).then(filterBrackets).then(filterWildChars).then(findExactMatch).then(removeDuplicates);
+        return Promise.all<Filter>(processes).then(createFilter).then(filterResults).then(filterBrackets).then(filterWildChars).then(findExactMatch).then(removeDuplicates);
     }
+
     /* return a songlist of all songs in the library */
-    getLibrary(): Promise<Songlist> {
+    async getLibrary(): Promise<Songlist> {
         var gmusic = this;
         var session = gmusic.session;
 
@@ -164,9 +160,9 @@ export default class GMusic {
             var songdoc = XDoc.fromString(response);
             var songarr: Song[] = [];
             var scripts = songdoc.search('//script');
-            var orig_process = window.parent['slat_process'];
+            var orig_process = (window.parent as any)['slat_process'];
             
-            window.parent[slat_process] = (songdata: any) => {
+            (window.parent as any)['slat_process'] = (songdata: any) => {
                 songarr = songarr.concat(songdata[0]);
             };
 
@@ -178,53 +174,54 @@ export default class GMusic {
                 catch (err) { }
             });
 
-            window.parent['slat_process'] = orig_process;
+            (window.parent as any)['slat_process'] = orig_process;
             return songarr;
         };
 
-        return this._req<string>('services/streamingloadalltracks', []).then(getSongArray).then((songArray: Song[]) => {
-            session.libraryCache = new Songlist('Library').fromGMusic(songArray);
-            return session.libraryCache;
-        });
+        const response = await this._req<string>('services/streamingloadalltracks', []);
+        const songArray = await getSongArray(response);
+        session.libraryCache = new Songlist('Library').fromGMusic(songArray);
+        return session.libraryCache;
     }
 
     /* return a songlist of thumbs up songs */
-    getThumbsUp() {
-        return this._req('services/getephemthumbsup', []).then(function (resp) {
-            return new Songlist('Thumbs Up').fromGMusic(resp);
-        });
+    async getThumbsUp() {
+        const resp = await this._req('services/getephemthumbsup', []);
+        return new Songlist('Thumbs Up').fromGMusic(resp);
     }
 
     /* return an array of empty songslists */
-    getPlaylists() {
+    async getPlaylists() {
         var genSonglists = (response: string) => {
             var arr = JSON.parse(response);
             var playlistArr = arr[1][0];
             var songlists: Songlist[] = [];
             playlistArr.forEach((playlist: Songlist) => {
-                songlists.push(new Converter().arrayToObject(playlist, new Songlist(), ['id', 'name']));
+                songlists.push(Converter.arrayToObject(playlist, new Songlist(), ['id', 'name']));
             });
             return songlists;
         };
 
-        return this._req<string>('services/loadplaylists', []).then(genSonglists);
+        const response = await this._req<string>('services/loadplaylists', []);
+        return genSonglists(response);
     }
 
     /* return a populated songlist */
-    getPlaylistSongs(songlist: Songlist) {
+    async getPlaylistSongs(songlist: Songlist) {
         var genSonglist = (response: string) => {
             return new Songlist(songlist.name, songlist.id).fromGMusic(response);
         };
-        return this._req<string>('services/loaduserplaylist', [String(songlist.id)]).then(genSonglist);
+        const response = await this._req<string>('services/loaduserplaylist', [String(songlist.id)]);
+        return genSonglist(response);
     }
     
     /* create gmusic playlists from the songlist */
-    createPlaylist(songlist: Songlist) {
+    async createPlaylist(songlist: Songlist) {
         var gmusic = this;
         var lists = songlist.split(1000);
 
         var createEmptyPlaylist = (list: Songlist) => {
-            stat.update('creating empty ' + list.name + ' playlist');
+            status.update('creating empty ' + list.name + ' playlist');
             return gmusic._req<any[]>('services/createplaylist', [false, list.name, null, []], list);
         };
 
@@ -232,12 +229,12 @@ export default class GMusic {
             var list = respList[1] as Songlist;
             var id = JSON.parse(respList[0])[1][0];
             list.id = id;
-            stat.update('updated ' + list.name + ' id');
+            status.update('updated ' + list.name + ' id');
             return list;
         };
 
         var updatePlaylist = (plist: Songlist) => {
-            stat.update('updated ' + plist.name + ' songs');
+            status.update('updated ' + plist.name + ' songs');
             return gmusic.addToPlaylist(plist);
         };
 
@@ -247,20 +244,20 @@ export default class GMusic {
             tasks.push(createEmptyPlaylist(list).then(updateListId).then(updatePlaylist));
         });
 
-        return Promise.all(tasks).then(function () {
-            stat.update('created ' + lists.length + ' playlists');
-            return lists;
-        });
+        await Promise.all(tasks);
+        status.update('created ' + lists.length + ' playlists');
+        return lists;
     }
+    
     addToPlaylist(songlist: Songlist) {
-        var playlist: any[] = [songlist.id, []];
-        var psongs: number[][] = playlist[1];
+        var playlist: [string | undefined, [string, number][]] = [songlist.id, []];
+        var psongs = playlist[1];
         songlist.songs.forEach(function (song) {
             if (song.id) {
                 psongs.push([song.id, Number(song.idtype)]);
             }
         });
-        stat.update('adding tracks to ' + songlist.name);
-        return this._req('services/addtrackstoplaylist', playlist);
+        status.update('adding tracks to ' + songlist.name);
+        return this._req<Songlist>('services/addtrackstoplaylist', playlist);
     }
 }

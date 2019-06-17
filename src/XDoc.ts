@@ -7,12 +7,12 @@ export default class XDoc {
         this.doc = document;
     }
     /* create a new element for the doc */
-    create(tagName: string, tagValue: any, attributes?: {
+    create<T = HTMLElement>(tagName: string, tagValue: any, attributes?: {
         [x: string]: any;
         type?: string;
         href?: string;
         download?: string;
-    }) {
+    }): T {
         var el = this.doc.createElement(tagName);
         if (typeof tagValue === 'string') {
             el.appendChild(this.doc.createTextNode(tagValue));
@@ -30,13 +30,13 @@ export default class XDoc {
                 el.setAttribute(key, attributes[key]);
             }
         }
-        return el;
+        return el as unknown as T;
     }
     
     /* get a list of elements matching the xpath */
     search(xpath: string) {
         var results = [];
-        var xpathresults = document.evaluate(xpath, this.doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE);
+        var xpathresults = document.evaluate(xpath, this.doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
         for (var i = 0; i < xpathresults.snapshotLength; i++) {
             results.push(xpathresults.snapshotItem(i));
         }

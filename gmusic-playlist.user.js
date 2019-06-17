@@ -482,28 +482,34 @@ class ALooper {
 
     forEach(loopCallBack) {
         var looper = this;
+
         return new Promise((resolve) => {
             var i = 0;
             var promises = [];
+
             var iterator = () => {
                 if (i >= looper.arr.length) {
                     Promise.all(promises).then(resolve);
                     return;
                 }
+
                 var arrval = looper.arr[i++];
                 var callbackpromise = loopCallBack(arrval, i, looper.arr);
                 promises.push(callbackpromise);
+
                 var pauseAndContinue = () => {
                     promises = [];
                     looper.pausefunc();
                     setTimeout(iterator, looper.pause);
                 };
+
                 if (i % looper.chunk === 0 && i !== 0) {
                     Promise.all(promises).then(pauseAndContinue);
                 } else {
                     iterator();
                 }
             };
+
             iterator();
         });
     }
@@ -521,10 +527,13 @@ class Filter {
 
     _apply(propName, propValue, exact) {
         var filter = this;
+
         if (!propValue) {
             return new Promise((res) => { res(filter); });
         }
+
         var fsongs = [];
+        
         return new ALooper(filter.songs).forEach((song) => {
             var match = (exact) ? song[propName] === propValue : STRU.closeMatch(song[propName], propValue);
             if (match) {

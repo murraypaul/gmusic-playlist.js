@@ -1,4 +1,5 @@
 import Song from "./Song";
+import Songlist from "./Songlist";
 
 /* promise async loop traversal */
 export default class ALooper {
@@ -11,10 +12,10 @@ export default class ALooper {
         this.songs = songs;
     }
 
-    forEach(loopCallBack: (song: Song) => Promise<any>) {
-        return new Promise((resolve) => {
+    forEach<T>(loopCallBack: (song: Song) => Promise<T>): Promise<T[]> {
+        return new Promise<T[]>((resolve) => {
             var i = 0;
-            var promises: Promise<any>[] = [];
+            var promises: Promise<T>[] = [];
 
             var iterator = () => {
                 if (i >= this.songs.length) {
@@ -39,6 +40,7 @@ export default class ALooper {
                     iterator();
                 }
             };
+
             iterator();
         });
     }

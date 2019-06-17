@@ -1,6 +1,6 @@
 import Converter from "./Converter";
 import GMusic from "./GMusic";
-import { session, stat } from "./gmusic-playlist.user";
+import { session, status } from "./gmusic-playlist.user";
 import Song from "./Song";
 import Songlist from "./Songlist";
 import XDoc from "./XDoc";
@@ -13,18 +13,16 @@ export default class Exporter {
     
     /* return a csv string for the given songlists */
     generateCsv(songlists: Songlist[]) {
-        var csv = '';
-        var conv = new Converter();
-        csv += conv.arrayToCsv(conv.struct(new Song())) + conv.csvchar + 'playlist\n';
+        var csv = Converter.arrayToCsv(Converter.struct(new Song())) + Converter.csvchar + 'playlist\n';
 
         songlists.forEach((songlist) => {
             songlist.songs.forEach((song) => {
-                csv += conv.arrayToCsv(conv.objectToArray(song)) +
-                    conv.csvchar + conv.quoteCsv(songlist.name) + '\n';
+                csv += Converter.arrayToCsv(Converter.objectToArray(song)) +
+                Converter.csvchar + Converter.quoteCsv(songlist.name!) + '\n';
             });
         });
 
-        stat.update('generated csv for ' + songlists.length + ' playlists');
+        status.update('generated csv for ' + songlists.length + ' playlists');
         return csv;
     }
 
@@ -46,7 +44,7 @@ export default class Exporter {
         var exporter = this;
         var music = new GMusic(session);
 
-        var populateSonglists = (songlists: Songlist[]) => {
+        var populateSonglists = async (songlists: Songlist[]) => {
             var lists = [];
             var populated: Songlist[] = [];
             var addpop = (full: Songlist) => {
@@ -57,16 +55,15 @@ export default class Exporter {
             });
             lists.push(music.getThumbsUp().then(addpop));
             lists.push(music.getLibrary().then(addpop));
-            stat.update('queued up ' + lists.length + ' playlists for download');
-            return Promise.all(lists).then(() => {
-                var totalSongs = 0;
-                populated.forEach((plist) => {
-                    totalSongs += plist.songs.length;
-                });
-                stat.progress = totalSongs + ' songs. ';
-                stat.update('obtained ' + populated.length + ' playlists');
-                return populated;
+            status.update('queued up ' + lists.length + ' playlists for download');
+            await Promise.all(lists);
+            var totalSongs = 0;
+            populated.forEach((plist) => {
+                totalSongs += plist.songs.length;
             });
+            status.progress = totalSongs + ' songs. ';
+            status.update('obtained ' + populated.length + ' playlists');
+            return populated;
         };
 
         music.getPlaylists().then(populateSonglists).then((songlists: Songlist[]) => {

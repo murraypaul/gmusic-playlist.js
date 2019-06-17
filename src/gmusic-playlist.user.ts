@@ -1,5 +1,4 @@
 import Status from "./Status";
-import StringFunctions from "./StringFunctions";
 import SessionInfo from "./SessionInfo";
 import XDoc from "./XDoc";
 import Exporter from "./Exporter";
@@ -8,8 +7,7 @@ import XHRTap from "./XHRTap";
 
 export var debug = (...args: any[]) => { console.log(...args); };
 export var trace = (...args: any[]) => { console.log(...args); };
-export var stat = new Status();
-export var STRU = new StringFunctions();
+export var status = new Status();
 export var session = new SessionInfo();
 
 export type OptionalString = string | null | undefined;
@@ -19,15 +17,15 @@ var addui = function () {
     var ui = new XDoc(document);
 
     var menu = ui.search('//div[@class="nav-section-divider"]')[0];
-    var inputui = ui.create('input', false, { 'type': 'file' });
-    var importui = ui.create('div', [ui.create('h4', 'Import Playlists'), inputui]);
+    var inputui = ui.create<HTMLInputElement>('input', false, { 'type': 'file' });
+    var importui = ui.create<HTMLDivElement>('div', [ui.create('h4', 'Import Playlists'), inputui]);
 
-    var exportlink = ui.create('a', 'Export Playlists', { 'href': '#exportCSV' });
-    var exportui = ui.create('div', ui.create('h4', exportlink));
-    var statusout = ui.create('h6', 'ready');
-    var statusui = ui.create('div', [statusout]);
+    var exportlink = ui.create<HTMLAnchorElement>('a', 'Export Playlists', { 'href': '#exportCSV' });
+    var exportui = ui.create<HTMLDivElement>('div', ui.create('h4', exportlink));
+    var statusout = ui.create<HTMLHeadingElement>('h6', 'ready');
+    var statusui = ui.create<HTMLDivElement>('div', [statusout]);
 
-    stat.element = statusout;
+    status.element = statusout;
 
     var exporter = new Exporter();
     exporter.listenTo(exportlink);

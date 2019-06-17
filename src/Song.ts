@@ -1,59 +1,45 @@
-import { trace, session, STRU, stat } from "./gmusic-playlist.user";
+import { trace, session, status } from "./gmusic-playlist.user";
 import SessionInfo from "./SessionInfo";
 import GMusic from "./GMusic";
 import Converter from "./Converter";
+import Filter from "./Filter";
+import { pad } from "./StringFunctions";
 
 /* a song object for holding song info. */
 export default class Song {
-    id: any;
-    _gsuggested: boolean;
-    title: string | null;
-    artist: string | null;
-    album: null;
-    track: null;
-    duration: null;
-    idtype: null;
-    playcount: null;
-    rating: null;
-    year: null;
-    genre: null;
-    notes: string;
-    
-    constructor() {
-        this.title = null;
-        this.artist = null;
-        this.album = null;
-        /* track postion of song in album */
-        this.track = null;
-        /** duration of the song */
-        this.duration = null;
-        /* this google song id */
-        this.id = null;
-        /* the google song id type 1 (free/purcahsed),
-           2 (uploaded/non matched), 6 (uploaded/matched), * (other)  */
-        this.idtype = null;
-        /* the number of times this song has been played */
-        this.playcount = null;
-        /* the rating of a song, 1 (down) 5 (up) */
-        this.rating = null;
-        /* the year this song was published */
-        this.year = null;
-        /* the genre of the song */
-        this.genre = null;
-        /** notes for this song, such as search info */
-        this.notes = '';
-        /** if this song was suggested as a top match by google */
-        this._gsuggested = false;
-    }
+    /* this google song id */
+    id: string | null = null;
+    /** if this song was suggested as a top match by google */
+    _gsuggested: boolean = false;
+    title: string | null = null;
+    artist: string | null = null;
+    album: string | null = null;
+    /* track postion of song in album */
+    track: number | null = null;
+    /** duration of the song */
+    duration: number | null = null;
+    /* the google song id type 1 (free/purcahsed),
+       2 (uploaded/non matched), 6 (uploaded/matched), * (other)  */
+    idtype: number | null = null;
+    /* the number of times this song has been played */
+    playcount: number | null = null;
+    /* the rating of a song, 1 (down) 5 (up) */
+    rating?: number | null = null;
+    /* the year this song was published */
+    year?: number | null = null;
+    /* the genre of the song */
+    genre?: string | null = null;
+    /** notes for this song, such as search info */
+    notes: string = '';
 
     toString() {
         return JSON.stringify(this);
     }
-    
+
     /* populate based on the typical gmusic array representation */
-    fromGMusic(arr: any[]) {
-        var song = this;
-        new Converter().arrayToObject(arr, song, [null, 'title', null, 'artist', 'album', null, null, null, null, null,
+    static fromGMusic(arr: any[]) {
+        var song = new Song();
+        Converter.arrayToObject(arr, song, [null, 'title', null, 'artist', 'album', null, null, null, null, null,
             null, 'genre', null, 'duration', 'track', null, null, null, 'year', null,
             null, null, 'playcount', 'rating', null, null, null, null, 'id', 'idtype']);
         /* use the unique ID for non all access (personal) songs */
@@ -66,29 +52,29 @@ export default class Song {
 
     /* return the id if not null, otherwise search GMusic for the id,
        if search fails to find a result null will be returned. */
-    getGMusicId(sess?: SessionInfo) {
-        var song = this;
-        if (song.id) {
-            return new Promise((res) => { res(song.id); });
+    getGMusicId(sess?: SessionInfo): Promise<string> {
+        if (this.id) {
+            return new Promise((res) => { res(this.id!); });
         }
         sess = !sess ? session : sess;
         var music = new GMusic(sess);
-        trace('looking for song id for ' + song.title, song);
-        return music.search(song).then(function (filter) {
-            trace(song.title + ' search complete', [song, filter]);
+        trace('looking for song id for ' + this.title, this);
+        return music.search(this)!.then((filter: Filter) => {
+            trace(this.title + ' search complete', [this, filter]);
             if (filter.hasMatch) {
-                song.notes = STRU.pad(filter.songs.length, 2) +
+                this.notes = pad(filter.songs.length, 2) +
                     ' results match ';
-                Object.keys(filter.match).forEach(function (key) {
-                    song.notes += key + ':';
+                Object.keys(filter.match).forEach((key) => {
+                    this.notes += key + ':';
                 });
-                new Converter().update(song, filter.songs[0]);
+                Converter.update(this, filter.songs[0]);
             }
-            trace(song.title + ' id search complete');
-            return song.id;
-        }, function (err) {
-            stat.update('search error');
-            console.log(err, song);
+            trace(this.title + ' id search complete');
+            return this.id!;
+        }, (err: Error) => {
+            status.update('search error');
+            console.log(err, this);
+            throw err;
         });
     }
 }
