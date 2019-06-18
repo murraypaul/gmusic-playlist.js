@@ -3,9 +3,11 @@ import { debug } from "./gmusic-playlist.user";
 /* XML document functions */
 export default class XDoc {
     doc: Document;
+    
     constructor(document: Document) {
         this.doc = document;
     }
+
     /* create a new element for the doc */
     create<T = HTMLElement>(tagName: string, tagValue: any, attributes?: {
         [x: string]: any;

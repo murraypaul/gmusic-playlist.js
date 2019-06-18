@@ -107,7 +107,7 @@ export default class Importer {
         };
 
         /* search for gmusic song ids for the songs in each song list */
-        var getGMusicSongIds = (songlists: Songlist[]): Promise<Songlist[]> => {
+        var getGMusicSongIds = async (songlists: Songlist[]): Promise<Songlist[]> => {
             var songcount = 0;
             var allsongs: Song[] = [];
             var progress = () => { return songcount + '/' + allsongs.length + ' songs. '; };
@@ -132,19 +132,24 @@ export default class Importer {
 
             var looper = new ALooper(allsongs);
             
-            return looper.forEach((song) => {
-                return song.getGMusicId().then(() => {
+            try {
+                await looper.forEach(async (song) => {
+                    await song.getGMusicId();
                     if (song.id) {
                         ++songcount;
                         status.update('found: ' + song.title + ' by ' + song.artist);
                     }
                     status.progress = progress();
                 });
-            }).then(searchCompleted, searchFailed);
+                return searchCompleted();
+            }
+            catch (err) {
+                return searchFailed(err);
+            }
         };
 
         /* create playlists for the songlists */
-        var createGMusicPlaylists = (songlists: Songlist[]) => {
+        var createGMusicPlaylists = async (songlists: Songlist[]) => {
             var createTasks: Promise<any>[] = [];
             var createdlists: Songlist[] = [];
             songlists.forEach((songlist) => {
@@ -153,10 +158,9 @@ export default class Importer {
                 }));
             });
             status.update('creating ' + createTasks.length + ' playlists');
-            return Promise.all(createTasks).then(() => {
-                status.update('created ' + createdlists.length + ' playlists');
-                return createdlists;
-            });
+            await Promise.all(createTasks);
+            status.update('created ' + createdlists.length + ' playlists');
+            return createdlists;
         };
 
         /* convert the songlists back to csv and provide for download */

@@ -128,7 +128,9 @@ export default class Songlist {
                 addsng(song);
             });
         }
+        
         trace('loaded ' + this.name, this);
+
         return this;
     }
 }

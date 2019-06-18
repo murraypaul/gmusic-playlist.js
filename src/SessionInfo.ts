@@ -5,22 +5,13 @@ import XHRTap from "./XHRTap";
 /* session information needed in order to send reqs to server */
 export default class SessionInfo {
     libraryCache?: Songlist;
-    dv: null;
-    xtcode: null;
-    sessionid: null;
-    obfid: null;
+    dv?: any;
+    xtcode?: any;
+    sessionid?: any;
+    obfid?: any;
     oninit?: () => void;
 
     constructor() {
-        /* the library cache */
-        /* the dv value */
-        this.dv = null;
-        /* the xt code, not sure exactly what this is yet */
-        this.xtcode = null;
-        /* the session id, is sent in posts */
-        this.sessionid = null;
-        /* the obfid, not sure what this is yet. */
-        this.obfid = null;
         /* listener for when the session first becomes valid. */
         this.oninit = () => {
             new GMusic(this).getLibrary().then((songlist: Songlist) => {

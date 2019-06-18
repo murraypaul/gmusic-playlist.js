@@ -15,7 +15,7 @@ export default class Filter {
         this.songs = initialList;
     }
 
-    private apply(propName: keyof Song, propValue: any, exact: boolean) {
+    private async apply(propName: keyof Song, propValue: any, exact: boolean) {
         // if (!propValue) {
         //     return new Promise((res) => { res(this); });
         // }
@@ -23,7 +23,7 @@ export default class Filter {
         var fsongs: Song[] = [];
         const looper = new ALooper(this.songs);
 
-        return looper.forEach((song) => {
+        await looper.forEach((song) => {
             return new Promise<void>(() => {
                 var match = (exact) ? song[propName] === propValue : closeMatch(song[propName], propValue);
                 if (match) {
@@ -32,14 +32,13 @@ export default class Filter {
                     this.match[propName] = true;
                 }
             });
-        }).then(() => {
-            if (fsongs.length > 0) {
-                this.hasMatch = true;
-                this.songs = fsongs;
-            }
-            trace('applyed filter ' + propName + ':' + propValue, this);
-            return this;
         });
+        if (fsongs.length > 0) {
+            this.hasMatch = true;
+            this.songs = fsongs;
+        }
+        trace('applyed filter ' + propName + ':' + propValue, this);
+        return this;
     }
 
     removeDuplicates() {

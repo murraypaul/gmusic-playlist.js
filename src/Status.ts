@@ -1,14 +1,9 @@
 import { debug } from "./gmusic-playlist.user";
 
 export default class Status {
-    element: HTMLElement | null;
-    progress: string;
+    element: HTMLElement | null = null;
+    progress: string = '';
     
-    constructor() {
-        this.element = null;
-        this.progress = '';
-    }
-
     update(msg: string) {
         debug(msg);
         if (this.element) {
