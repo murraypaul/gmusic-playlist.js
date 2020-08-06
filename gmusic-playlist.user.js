@@ -685,17 +685,19 @@ class Songlist {
         if (response.constructor === String) {
             var arr = JSON.parse(response);
             /* google song search */
-            if (arr[1][16]) {
-                arr[1][16].forEach((search_type) => {
-                    if (search_type.length > 1) search_type[1].forEach((sng) => {
-                        addsng(sng[0]);
+            if (arr[1]) {
+                if (arr[1][16]) {
+                    arr[1][16].forEach((search_type) => {
+                        if (search_type.length > 1) search_type[1].forEach((sng) => {
+                            addsng(sng[0]);
+                        });
+                        /* playlist song results */
                     });
-                    /* playlist song results */
-                });
-            } else if (arr[1][0]) {
-                arr[1][0].forEach((song) => {
-                    addsng(song);
-                });
+                } else if (arr[1][0]) {
+                    arr[1][0].forEach((song) => {
+                        addsng(song);
+                    });
+                }
             }
             /* top suggested songs */
             /* not sure where this info is anymore
